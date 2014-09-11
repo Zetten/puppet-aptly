@@ -34,10 +34,11 @@
 #
 define aptly::mirror (
   $location,
-  $key,
+  $key       = undef,
   $keyserver = 'keyserver.ubuntu.com',
-  $release = $::lsbdistcodename,
-  $repos = [],
+  $release   = $::lsbdistcodename,
+  $repos     = [],
+  $use_cron  = false,
 ) {
   validate_string($keyserver)
   validate_array($repos)
@@ -45,7 +46,7 @@ define aptly::mirror (
   include aptly
 
   $gpg_cmd = '/usr/bin/gpg --no-default-keyring --keyring trustedkeys.gpg'
-  $aptly_cmd = '/usr/bin/aptly mirror'
+  $aptly_cmd = "${::aptly::aptly_cmd} mirror"
   $exec_key_title = "aptly_mirror_key-${key}"
 
   if empty($repos) {
@@ -55,11 +56,12 @@ define aptly::mirror (
     $components_arg = " ${components}"
   }
 
-  if !defined(Exec[$exec_key_title]) {
+  if $key and !defined(Exec[$exec_key_title]) {
     exec { $exec_key_title:
       command => "${gpg_cmd} --keyserver '${keyserver}' --recv-keys '${key}'",
       unless  => "${gpg_cmd} --list-keys '${key}'",
       user    => $::aptly::user,
+      notify  => Exec["aptly_mirror_create-${title}"],
     }
   }
 
@@ -67,9 +69,17 @@ define aptly::mirror (
     command => "${aptly_cmd} create ${title} ${location} ${release}${components_arg}",
     unless  => "${aptly_cmd} show ${title} >/dev/null",
     user    => $::aptly::user,
-    require => [
-      Class['aptly'],
-      Exec[$exec_key_title],
-    ],
+    require => Class['aptly'],
+  }
+
+  file { "/etc/cron.daily/aptly-${title}":
+    ensure  => $use_cron ? {
+                 true    => 'file',
+                 default => 'absent',
+               },
+    content => template('aptly/cron.daily.erb'),
+    owner   => $::aptly::user,
+    mode    => '0755',
+    require => Exec["aptly_mirror_create-${title}"],
   }
 }
