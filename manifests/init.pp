@@ -60,7 +60,7 @@ class aptly (
 
   file { $config_file:
     ensure  => file,
-    content => inline_template("<%= @config.to_pson %>\n"),
+    content => inline_template("<%= Hash[@config.sort].to_pson %>\n"),
   }
 
   $aptly_cmd = "/usr/bin/aptly -config ${config_file}"
