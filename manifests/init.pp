@@ -29,10 +29,11 @@
 #
 class aptly (
   $package_ensure = present,
-  $config = {},
-  $repo = true,
-  $key_server = undef,
-  $user = 'root',
+  $config_file    = '/etc/aptly.conf',
+  $config         = {},
+  $repo           = true,
+  $key_server     = undef,
+  $user           = 'root',
 ) {
 
   validate_hash($config)
@@ -57,8 +58,10 @@ class aptly (
     ensure  => $package_ensure,
   }
 
-  file { '/etc/aptly.conf':
+  file { $config_file:
     ensure  => file,
-    content => inline_template("<%= @config.to_pson %>\n"),
+    content => inline_template("<%= Hash[@config.sort].to_pson %>\n"),
   }
+
+  $aptly_cmd = "/usr/bin/aptly -config ${config_file}"
 }
