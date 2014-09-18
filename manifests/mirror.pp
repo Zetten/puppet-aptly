@@ -34,10 +34,11 @@
 #
 define aptly::mirror (
   $location,
-  $key         = undef,
-  $keyserver   = 'keyserver.ubuntu.com',
-  $release     = $::lsbdistcodename,
-  $repos       = [],
+  $key          = undef,
+  $keyserver    = 'keyserver.ubuntu.com',
+  $release      = $::lsbdistcodename,
+  $repos        = [],
+  $with_sources = false,
 ) {
   validate_string($keyserver)
   validate_array($repos)
@@ -65,7 +66,7 @@ define aptly::mirror (
   }
 
   exec { "aptly_mirror_create-${title}":
-    command => "${aptly_cmd} create ${title} ${location} ${release}${components_arg}",
+    command => "${aptly_cmd} create -with-sources=${with_sources} ${title} ${location} ${release}${components_arg}",
     unless  => "${aptly_cmd} show ${title} >/dev/null",
     user    => $::aptly::user,
     require => Class['aptly'],
